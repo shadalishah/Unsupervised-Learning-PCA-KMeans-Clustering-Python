@@ -1,0 +1,602 @@
+---
+title: "Unsupervised Learning"
+subtitle: "Chapter 12: ISLR2 Exercise Solutions"
+author: "Shad Ali Shah"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    toc-location: left
+    number-sections: true
+    number-depth: 3
+    code-fold: true
+    code-tools: true
+    code-summary: "Show code"
+    theme: cosmo
+    colorlinks: true
+    link-citations: true
+    df-print: kable
+    fig-cap-location: bottom
+    tbl-cap-location: top
+    crossref:
+      fig-title: "Figure"
+      tbl-title: "Table"
+      fig-prefix: "Fig."
+      tbl-prefix: "Table"
+execute:
+  echo: true
+  warning: false
+  message: false
+  error: true
+  cache: false
+  keep-going: true
+  fig-width: 6.5
+  fig-height: 4
+jupyter: python3
+---
+
+# Chapter 12
+
+```{python}
+import numpy as np
+import pandas as pd
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from statsmodels.datasets import get_rdataset
+from sklearn.decomposition import PCA
+from sklearn.metrics import pairwise_distances
+from sklearn.preprocessing import StandardScaler
+from ISLP import load_data
+from sklearn.cluster import (KMeans, AgglomerativeClustering)
+from scipy.cluster.hierarchy import (linkage,dendrogram, cut_tree)
+from ISLP.cluster import compute_linkage
+```
+
+## Exercise 7
+
+```{python}
+USArrests=get_rdataset('USArrests').data
+```
+
+```{python}
+USArrests.head()
+```
+
+```{python}
+USArrests.shape
+```
+
+```{python}
+scaler=StandardScaler(with_std=True,with_mean=True)
+USArrestscaled=scaler.fit_transform(USArrests)
+```
+
+```{python}
+#Compute the squared Euclidian distance matrix
+Eucl_matrix=pairwise_distances(USArrestscaled.transpose())
+Eucl_matrix_sq=np.square(Eucl_matrix)
+```
+
+```{python}
+Eucl_matrix_sq.shape
+```
+
+```{python}
+#Return the correlation matrix
+corr_matrix=np.corrcoef(USArrestscaled, rowvar=False)
+Comp_corr_matrix=1-corr_matrix
+```
+
+```{python}
+prop_matrix  = (Comp_corr_matrix)/Eucl_matrix_sq
+```
+
+```{python}
+prop_matrix
+```
+
+The cited assertion in the exercise instruction is proved for the case of USArrests data set. The proportionality coefficient is 0.01.
+
+## Exercise 8
+
+```{python}
+USArrests=get_rdataset('USArrests').data
+```
+
+```{python}
+scaler=StandardScaler(with_std=True,with_mean=True)
+USArrestscaled=scaler.fit_transform(USArrests)
+```
+
+### (a)
+
+```{python}
+pcaUS = PCA()
+pcaUS.fit(USArrestscaled)
+```
+
+```{python}
+pca_exp=pcaUS.explained_variance_ratio_
+```
+
+### (b)
+
+```{python}
+loadings=pcaUS.components_
+X=USArrestscaled.transpose()
+```
+
+```{python}
+exp_var=np.zeros(4)
+for i in range(4):
+    exp_var[i]=np.sum(np.matmul(loadings[i,:],X)**2)/np.sum(X**2)
+```
+
+```{python}
+exp_var
+```
+
+```{python}
+pca_exp/exp_var
+```
+
+The two matrices obtained in (a) and (b) are the same.
+
+## Exercise 9
+
+```{python}
+USArrests=get_rdataset('USArrests').data
+scaler=StandardScaler(with_std=True,with_mean=True)
+USArrestscaled=scaler.fit_transform(USArrests)
+```
+
+### (a)
+
+```{python}
+HClust = AgglomerativeClustering
+hc_comp = HClust(distance_threshold=0,n_clusters=None,linkage='complete')
+hc_comp.fit(USArrests)
+```
+
+### (b)
+
+```{python}
+linkage_comp = compute_linkage(hc_comp)
+fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+dendrogram(linkage_comp,ax=ax,color_threshold=120, above_threshold_color='black');
+```
+
+```{python}
+USArrests.index
+```
+
+```{python}
+df1=pd.DataFrame(cut_tree(linkage_comp, n_clusters=3),index=USArrests.index)
+df1.index.name='State'
+df1.rename(columns={0:'Cluster'},inplace=True)
+```
+
+```{python}
+df1
+```
+
+### (c)
+
+```{python}
+HClust = AgglomerativeClustering
+hc_comp = HClust(distance_threshold=0,n_clusters=None,linkage='complete')
+hc_comp.fit(USArrestscaled)
+```
+
+```{python}
+linkage_comp = compute_linkage(hc_comp)
+fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+dendrogram(linkage_comp,ax=ax,color_threshold=4, above_threshold_color='black');
+```
+
+```{python}
+df2=pd.DataFrame(cut_tree(linkage_comp, n_clusters=3),index=USArrests.index)
+df2.index.name='State'
+df2.rename(columns={0:'Cluster'},inplace=True)
+```
+
+```{python}
+df2
+```
+
+### (d)
+
+```{python}
+df= df1.join(df2, lsuffix='_Unscaled', rsuffix='_Scaled')
+```
+
+```{python}
+df
+```
+
+```{python}
+df['Cluster_Unscaled'][df['Cluster_Unscaled']==0].count()
+```
+
+```{python}
+df['Cluster_Scaled'][df['Cluster_Scaled']==0].count()
+```
+
+```{python}
+df['Cluster_Unscaled'][df['Cluster_Unscaled']==1].count()
+```
+
+```{python}
+df['Cluster_Scaled'][df['Cluster_Scaled']==1].count()
+```
+
+Scaling variables tends to increase the observations in the third cluster.  
+The variables should be scaled before doing hierarchical clustering in this case because feature units are different. For example, `Murder` is a rate per 100,000 while `UrbanPop` is a percentage of urban population.
+
+## Exercise 10
+
+```{python}
+np.random.seed(1)
+X = np.random.rand(60,50)
+X[:20,:20] += 1
+X[20:40,20:40] -= 1
+```
+
+```{python}
+#Label the classes
+y=np.concatenate((np.repeat(0,20),np.repeat(1,20),np.repeat(2,20)))
+```
+
+### (b)
+
+```{python}
+pca=PCA()
+pca_X=pca.fit_transform(X)
+```
+
+```{python}
+plt.scatter(pca_X[:,0], pca_X[:,1], c=y, cmap=mpl.cm.Paired)
+plt.xlabel('Z1')
+plt.ylabel('Z2');
+```
+
+### (c)
+
+```{python}
+kmeans_3C = KMeans(n_clusters=3,random_state=2,n_init=20).fit(X)
+pd.crosstab(index=kmeans_3C.labels_,columns=y,rownames=['kmeans_3C'],colnames=['y'])
+```
+
+Since K-means clustering arbitrarily numbers the clusters, we conclude that is had correctly identified the 3 real clusters.
+
+### (d)
+
+```{python}
+kmeans_2C = KMeans(n_clusters=2,random_state=3,n_init=20).fit(X)
+pd.crosstab(index=kmeans_2C.labels_,columns=y,rownames=['kmeans_2C'],colnames=['y'])
+```
+
+K-means identifies classes 1 and 2 as pertaining to the same cluster.
+
+### (e)
+
+```{python}
+kmeans_4C = KMeans(n_clusters=4,random_state=4,n_init=20).fit(X)
+pd.crosstab(index=kmeans_4C.labels_,columns=y,rownames=['kmeans_4C'],colnames=['y'])
+```
+
+K-means splits class 0 in two halves over two clusters.
+
+### (f)
+
+```{python}
+kmeans_3C_pca = KMeans(n_clusters=3,random_state=5,n_init=20).fit(pca_X[:,:2])
+pd.crosstab(index=kmeans_3C_pca.labels_,columns=y,rownames=['kmeans_3C_pca'],colnames=['y'])
+```
+
+Again, like with the raw data, K-means correctly identifies clusters.
+
+### (g)
+
+```{python}
+scaled_X=StandardScaler().fit_transform(X)
+kmeans_3C_stds = KMeans(n_clusters=3,random_state=6,n_init=20).fit(scaled_X)
+pd.crosstab(index=kmeans_3C_stds.labels_,columns=y,rownames=['kmeans_3C_stds'],colnames=['y'])
+```
+
+Once again, K-means correctly identifies the clusters formed in (b).
+
+## Exercise 11
+
+```{python}
+def complete(data,thresh=1e-7,print_result=False,M=1):
+    """Function which performs matrix completion where missing values are random
+    data: The data matrix to complete.
+    thresh: Threshold below which the objective is considered no more decreasing.
+    print_result: If True the function must print out the progress in each iteration.
+    M: The number of principal components following the SVD decomposition of data."""
+    data_hat=data.copy()
+    
+    #Store the rows and columns indexes of missing values
+    r_idx=np.argwhere(np.isnan(data_hat))
+    if r_idx.size==0:
+        print('Sorry, the inserted matrix is already complete')
+        return
+    c_index=np.where(np.any(data_hat==np.isnan,axis=0))
+    #Step 1 of algorithm 12.1
+    data_bar=np.nanmean(data_hat,axis=0)
+    data_hat[np.split(r_idx,2,axis=1)[0],np.split(r_idx,2,axis=1)[1]]=data_bar[
+        np.split(r_idx,2,axis=1)[1]]
+    #Prepare data for step 2
+    rel_err = 1
+    count = 0
+    ismiss = np.isnan(data)
+    mssold = np.mean(data_hat[~ismiss]**2)
+    mss0 = np.mean(data[~ismiss]**2)
+    #Proceed to step 2
+    while rel_err > thresh:
+        count += 1
+        # Step 2(a)
+        U, D, V = np.linalg.svd(data_hat)
+        L = U[:,:M] * D[None,:M]
+        data_app=L.dot(V[:M])    
+        # Step 2(b)
+        data_hat[ismiss] = data_app[ismiss]
+        # Step 2(c)
+        mss = np.mean(((data - data_app)[~ismiss])**2)
+        rel_err = (mssold - mss) / mss0
+        mssold = mss
+        if print_result:
+            print("Iteration: {0}, MSS:{1:.3f}, Rel.Err {2:.2e}".format(count, mss, rel_err))
+    return data_hat
+```
+
+```{python}
+#Test on Boston data set
+Boston=load_data('Boston')
+```
+
+```{python}
+Boston['chas'].unique()
+```
+
+```{python}
+Boston.head()
+```
+
+```{python}
+Boston['rad'].unique()
+```
+
+```{python}
+Boston.info()
+```
+
+```{python}
+#First we standardize and scale all the data set features except 'chas' cause it is a dummy variable
+scaler=StandardScaler(with_std=True,with_mean=True)
+Boston_scaled=scaler.fit_transform(Boston.loc[:, Boston.columns != "chas"])
+```
+
+```{python}
+df = pd.DataFrame(Boston_scaled, columns = Boston.columns.drop(['chas']))
+```
+
+```{python}
+#Recover 'chas' feature of Boston data set
+df1=df.join(Boston['chas'])
+```
+
+```{python}
+#Leave out increasing numbers of observations from 5% to 30%
+df11=df1.to_numpy()
+f_omit = 0.05
+size=df1.size
+label_data=['5%','10%','15%3','20%','25%','30%']
+indexes=[(l,M) for l in label_data for M in range(1,9)]
+dataframes=[]
+for j in range(10):
+    #The iteration of the number seed means the repetition of the experience
+    np.random.seed(j)
+    r_idx = np.random.choice(np.arange(df11.shape[0]),int(f_omit*Boston.shape[0]),replace=False)
+    c_idx = np.random.choice(np.arange(df11.shape[1]),int(f_omit*Boston.shape[0]),replace=True)
+    df11_f5_na = df11.copy()
+    df11_f5_na[r_idx, c_idx] = np.nan
+    row=[r_idx]
+    column=[c_idx]
+    data=[df11_f5_na]
+    app_error=[]
+    for i in range(1,6):
+        r_idx=np.delete(np.arange(df1.shape[0]),row[i-1])
+        c_idx=np.delete(np.arange(df1.shape[1]),column[i-1])
+        row.append(np.random.choice(r_idx,int(f_omit*Boston.shape[0]),replace=False))
+        column.append(np.random.choice(c_idx,int(f_omit*Boston.shape[0]),replace=True))
+        X=data[i-1].copy()
+        X[row,column]=np.nan
+        data.append(X)
+    combined=[(d,M) for d in data for M in range(1,9)]
+     
+    for d,M in combined:
+        #Restore binary values for the last column of complete function
+        complete_modif=complete(d,M).copy()
+        complete_modif[:,12]=np.where(complete_modif[:,12]<0.5,0,1)
+        app_error.append((1/size*np.sum((complete_modif-df11)**2))**(1/2))
+    dataframes.append(pd.DataFrame(app_error,index=indexes))
+    dataframes[-1].index.name='(Missing fraction , M)'
+    dataframes[-1].rename(columns={0:'Rep_'+str(j+1)},inplace=True)
+
+```
+
+```{python}
+#Now let's define the dataframe which sums up the approximation errors
+dataframe_errors=dataframes[0].join(dataframes[1:])
+```
+
+```{python}
+dataframe_errors
+```
+
+```{python}
+#We'll get the required approximation errors by computing the mean of each line
+dataframe_errors.mean(axis=1)
+```
+
+As expected the averaged approximation errors increase with the fraction of missing values. The number of principal components does not affect those errors.  
+For the case of Boston dataset, the averaged errors range from approximately 7% to 15%.
+
+## Exercise 12
+
+```{python}
+def complete_pca(data,thresh=1e-7,print_result=False,M=1):
+    """Function which performs matrix completion using PCA where missing values are random
+    data: The data matrix to complete.
+    thresh: Threshold below which the objective is considered no more decreasing.
+    print_result: If True the function must print out the progress in each iteration.
+    M: The number of principal components following the SVD decomposition of data."""
+    pca=PCA()
+    data_hat=data.copy()
+    #Store the rows and columns indexes of missing values
+    r_idx=np.argwhere(np.isnan(data_hat))
+    if r_idx.size==0:
+        print('Sorry, the inserted matrix is already complete')
+        return
+    c_index=np.where(np.any(data_hat==np.isnan,axis=0))
+    #Step 1 of algorithm 12.1
+    data_bar=np.nanmean(data_hat,axis=0)
+    data_hat[np.split(r_idx,2,axis=1)[0],np.split(r_idx,2,axis=1)[1]]=data_bar[
+        np.split(r_idx,2,axis=1)[1]]
+    #Prepare data for step 2
+    rel_err = 1
+    count = 0
+    ismiss = np.isnan(data)
+    mssold = np.mean(data_hat[~ismiss]**2)
+    mss0 = np.mean(data[~ismiss]**2)
+    #Proceed to step 2
+    while rel_err > thresh:
+        count += 1
+        # Step 2(a)
+        pca.fit(data_hat)
+        data_app=pca.transform(data_hat)[:,:M].dot(pca.components_[:M])
+        # Step 2(b)
+        data_hat[ismiss] = data_app[ismiss]
+        # Step 2(c)
+        mss = np.mean(((data - data_app)[~ismiss])**2)
+        rel_err = (mssold - mss) / mss0
+        mssold = mss
+        if print_result:
+            print("Iteration: {0}, MSS:{1:.3f}, Rel.Err {2:.2e}".format(count, mss, rel_err))
+    return data_hat
+```
+
+## Exercise 13
+
+### (a)
+
+```{python}
+df=pd.read_csv('Ch12Ex13.csv', header=None)
+```
+
+```{python}
+df.head()
+```
+
+### (b)
+
+```{python}
+#Before doing hierarchical clustering we should transpose the dataframe cause for meaningful results
+# genes should be attributes of each patient.
+df=df.T
+```
+
+```{python}
+linkages=['complete','single','average']
+HC_methods=[]
+#Here we'll use linkage function defined in scipy library instead of AgglomerativeClustering
+#This is because AgglomerativeClustering does not enable the correlation based distance metric
+for i,l in zip(range(4),linkages):
+    HC = linkage(y=df, method=l, metric='correlation')
+    HC_methods.append(HC)
+    plt.figure(i)
+    plt.title('%s linkage ' %l)
+    plt.xlabel('Genes')
+    plt.ylabel('Correlation-based distance')
+    dendrogram(HC, labels=df.index, leaf_rotation=90, leaf_font_size=10);
+
+```
+
+```{python}
+#Results dataframe for complete linkage
+complete = pd.DataFrame(cut_tree(HC_methods[0], n_clusters = 2))
+complete.index.name = 'patients'
+complete.rename(columns={0: 'Complete'}, inplace=True)
+```
+
+```{python}
+#Results dataframe for single linkage
+single = pd.DataFrame(cut_tree(HC_methods[1], n_clusters = 2))
+single.index.name = 'patients'
+single.rename(columns={0: 'Single'}, inplace=True)
+```
+
+```{python}
+#Results dataframe for average linkage
+average = pd.DataFrame(cut_tree(HC_methods[2], n_clusters = 2))
+average.index.name = 'patients'
+average.rename(columns={0: 'Average'}, inplace=True)
+```
+
+```{python}
+dataframes=[complete,single,average]
+data=dataframes[0].join(dataframes[1:])
+```
+
+```{python}
+data
+```
+
+Yes, results depend on the type of linkage used.
+
+### (c)
+
+```{python}
+# Genes which differ the most across the two groups are the genes which contribute the most in variance
+#explanation. These are the genes which show the high loadings, in absolute values, obtained after PCA
+pca=PCA()
+pca_df=pca.fit_transform(df)
+PVE=pca.explained_variance_ratio_
+```
+
+```{python}
+fig, axes = plt.subplots(1, 2, figsize=(15,6))
+ax = axes[0]
+ticks = np.arange(pca.n_components_)+1
+ax.plot(ticks,PVE,marker='o')
+ax.set_xlabel('Principal Component');
+ax.set_ylabel('PVE')
+ax = axes[1]
+ax.plot(ticks, PVE.cumsum(),marker='o');
+ax.set_xlabel('Principal Component')
+ax.set_ylabel('Cumulative PVE');
+```
+
+The first principal components shows an elbow in the right side panel of the previous figure.
+
+```{python}
+#Now let's sort the genes following the first principal component in terms of loadings in abs values
+df_pc1= pd.DataFrame({'Gene': range(len(df.T)), 'Loadings': pca.components_[0,:]})
+#Add a column for absolute values of loadings
+df_pc1['Abs_loadings']=abs(df_pc1['Loadings'])
+#Sort the data frame in descending order
+df_pc1_sorted=df_pc1.sort_values(by=['Abs_loadings'], ascending=False)
+```
+
+```{python}
+df_pc1_sorted.iloc[:10,:]
+```
+
+The gene which differs the most across the two groups is gene 599.
+
+```{python}
+
+```
